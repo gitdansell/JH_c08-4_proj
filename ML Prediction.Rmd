@@ -35,6 +35,8 @@ library(printr)
 ```
 
 ```{r include=TRUE}
+set.seed(1984)    #random seed set for reproducibility
+
 pml_testing = read_csv("pml-testing.csv")
 pml_training = read_csv("pml-training.csv")
 
@@ -79,14 +81,16 @@ The [rows, columns] count of the clean training dataset is `r dim_train`.
 ```{r include=TRUE}
 
 cv_control = trainControl(method="cv", number=5, allowParallel = TRUE)
-set.seed(1984)
 cluster = makePSOCKcluster(8) # 8 cores
 registerDoParallel(cluster)
 ```
 
 ```{r rf , cache=TRUE, include=TRUE}
 # Random Forest.
-model_rf = train(classe ~ ., data=train, method="rf", trControl=cv_control)
+model_rf = train(classe ~ .,
+                 data=train, 
+                 method="rf", 
+                 trControl=cv_control)
 ```
 
 ```{r figure_1, out.width="65%", fig.align="center", include=TRUE}
@@ -99,7 +103,10 @@ ggplot(model_rf) +
 ```{r gbm, cache=TRUE, include=TRUE}
 # gbm
 # gbm doesn't automatically handle NA'S, so pre-process with knnImpute.
-model_gbm = train(classe ~ ., data=train, method="gbm", trControl=cv_control, preProcess=c("knnImpute"))
+model_gbm = train(classe ~ .,
+                  data=train, 
+                  method="gbm", trControl=cv_control, 
+                  preProcess=c("knnImpute"))
 ```
 
 ```{r figure_2, out.width="65%", fig.align="center", include=TRUE}
@@ -107,6 +114,12 @@ ggplot(model_gbm) +
   labs(title="Accuracy of Gradient Boosting Machine Model",
        caption="Figure 2.") +
   theme_minimal()
+```
+
+```{r include=FALSE}
+# Clean up after parallel processing
+stopCluster(cluster)
+registerDoSEQ()
 ```
 
 ## Out of Sample Error
@@ -120,7 +133,7 @@ val_rf = predict(model_rf, validate)
 confusionMatrix(factor(validate$classe), val_rf)
 ```
 <p>
-**GBM:** The gbm model scored 99.95% accuracy with a Kappa value of 0.9994. The out-of-sample error rate is 1 - .9995 = 0.0005. Only two observations were misclassified:
+**GBM:** The gbm model scored 99.97% accuracy with a Kappa value of 0.9997. The out-of-sample error rate is 1 - .9997 = 0.0003. Only one observation was misclassified:
 ```{r}
 val_gbm = predict(model_gbm, validate)
 confusionMatrix(factor(validate$classe), val_gbm)
