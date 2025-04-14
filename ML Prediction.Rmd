@@ -24,7 +24,7 @@ https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
 Testing data was downloaded into the working directory from this url:
 https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
 
-No processing was done on the files until after being loaded into R (v4.4.1). The training dataset was inspected and found to have three timestamp columns, which were removed. It was then analyzed to determine if any columns had a high number of NA values. If a column's observations were more than 95% NA, that column was deemed to be potentially problematic to the prediction models and was removed.
+No processing was done on the files until after being loaded into R (v4.4.1). The training dataset was inspected and found to have one index and three timestamp columns, which were removed. It was then analyzed to determine if any columns had a high number of NA values. If a column's observations were more than 95% NA, that column was deemed to be potentially problematic to the prediction models and was removed.
 ```{r include=TRUE}
 library(readr)
 library(caret)
@@ -32,17 +32,22 @@ library(parallel)
 library(doParallel)
 library(ggplot2)
 library(printr)
+set.seed(1984)    #random seed set for reproducibility
 ```
 
 ```{r include=TRUE}
-set.seed(1984)    #random seed set for reproducibility
-
 pml_testing = read_csv("pml-testing.csv")
 pml_training = read_csv("pml-training.csv")
+```
 
+```{r include=TRUE}
+# Remove index column @col=1 (no title)
+pml_training2 = pml_training[,-1]
 # Remove Timestamp columns
-pml_training2 = pml_training[, !grepl("timestamp", names(pml_training))]
+pml_training2 = pml_training2[, !grepl("timestamp", names(pml_training2))]
+```
 
+```{r include=TRUE}
 # Check and remove columns with more than 95% <NA>.
 na_rate = colMeans(is.na(pml_training2))
 high_na_cols = which(na_rate >= .95)
@@ -126,14 +131,14 @@ registerDoSEQ()
 
 The validate dataset [`r dim_validate`] is used to measure the out-of-sample error.     
 <p>
-**Random Forest:** The rf model scored 100% accuracy (0.0% out-of-sample error rate) with a Kappa value of 1, meaning that there is perfect agreement between the predicted and actual classifications, beyond any agreement by chance:
+**Random Forest:** The rf model scored 99.9% accuracy (0.1% out-of-sample error rate) with a Kappa value of 0.9987, meaning that there is 99.87% agreement between the predicted and actual classifications, beyond any agreement by chance. Four observations were misclassified:
 
 ```{r}
 val_rf = predict(model_rf, validate)
 confusionMatrix(factor(validate$classe), val_rf)
 ```
 <p>
-**GBM:** The gbm model scored 99.97% accuracy with a Kappa value of 0.9997. The out-of-sample error rate is 1 - .9997 = 0.0003. Only one observation was misclassified:
+**GBM:** The gbm model scored 99.18% accuracy with a Kappa value of 0.9897. The out-of-sample error rate is 1 - .9897 = 0.0103. Only 32 observation was misclassified:
 ```{r}
 val_gbm = predict(model_gbm, validate)
 confusionMatrix(factor(validate$classe), val_gbm)
